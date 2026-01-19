@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
-
-
 )
 
 type Headers struct {
@@ -19,17 +17,17 @@ func NewHeaders() *Headers {
 		headers: map[string]string{},
 	}
 }
-func isToken(str []byte) bool{
-	for _,ch:=range str{
-		found:=false
-		if ch>='A'&&ch<='Z'||ch>='a'&&ch<='z'||ch>='0'&&ch<='9'{
-			found=true
+func isToken(str []byte) bool {
+	for _, ch := range str {
+		found := false
+		if ch >= 'A' && ch <= 'Z' || ch >= 'a' && ch <= 'z' || ch >= '0' && ch <= '9' {
+			found = true
 		}
 		switch ch {
 		case '!', '#', '$', '%', '&', '*', '+', '-', '.', '^', '_', '`', '|', '~':
 			found = true
 		}
-		if !found{
+		if !found {
 			return false
 		}
 	}
@@ -39,6 +37,7 @@ func parse(data []byte) (string, string, error) {
 
 	parts := bytes.SplitN(data, []byte(":"), 2)
 	if len(parts) != 2 {
+
 		return "", "", fmt.Errorf("Malformed header")
 	}
 	name := parts[0]
@@ -53,12 +52,16 @@ func (h *Headers) GET(name string) string {
 	return h.headers[strings.ToLower(name)]
 }
 func (h *Headers) SET(name, value string) {
-	name=strings.ToLower(name)
-	newValue:=value
-	if h.headers[name]!=""&&h.headers[name]!=value{
-		newValue=h.headers[name] +", "+value
+
+
+	name = strings.ToLower(name)
+	newValue := value
+	val, ok := h.headers[name]
+	if ok {
+		h.headers[name]=val+", "+value
+	} else {
+		h.headers[name] = newValue
 	}
-	h.headers[name] = newValue
 }
 func (h *Headers) Parse(data []byte) (int, bool, error) {
 	read := 0
@@ -72,18 +75,19 @@ func (h *Headers) Parse(data []byte) (int, bool, error) {
 
 		if len(slice) == 0 {
 			done = true
-			read+=len(sep)
+			read += len(sep)
 			break
 		}
 		name, value, err := parse(slice)
 		if err != nil {
 			return 0, false, err
 		}
-		if !isToken([]byte(name)){
-			return 0,false,fmt.Errorf("Malformed Header")
+		if !isToken([]byte(name)) {
+
+			return 0, false, fmt.Errorf("Malformed Header")
 		}
-		h.SET(name,value)
-		read += i+len(sep)
+		h.SET(name, value)
+		read += i + len(sep)
 	}
 	return read, done, nil
 }

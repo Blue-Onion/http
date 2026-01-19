@@ -3,6 +3,7 @@ package request
 import (
 	"bytes"
 	"fmt"
+	"http/internal/headers"
 	"io"
 )
 
@@ -13,14 +14,16 @@ type RequestLine struct {
 }
 
 const (
-	StateInit  = 0
-	StateDone  = 1
-	StateError = -1
+	StateInit  = "init"
+	StateDone  = "done"
+	StateError = "error"
+	StateParseHeader = "headers"
 )
 
 type Request struct {
 	RequestLine RequestLine
-	state       int
+	Headers *headers.Headers
+	state       string
 }
 
 var ErrorMalfomredRequest = fmt.Errorf("Bad request")
@@ -59,11 +62,12 @@ func (r *Request) parse(data []byte) (int, error) {
 	read := 0
 outer:
 	for {
+		curr_data:=data[read:]
 		switch r.state {
 		case StateError:
 			return 0, ErrorStateInit
 		case StateInit:
-			rl, n, err := parseReqLine(data)
+			rl, n, err := parseReqLine(curr_data)
 			if err != nil {
 				r.state = StateError
 				return 0, err
@@ -73,11 +77,27 @@ outer:
 			}
 			read += n
 			r.RequestLine = *rl
-			r.state = StateDone
+			r.state = StateParseHeader
 
+		case StateParseHeader:
+			n,done,err:=r.Headers.Parse(curr_data)
+			if err != nil {
+				return 0, err
+			}
+			if n==0{
+				break outer
+			}
+			read+=n
+			if done{
+				r.state=StateDone
+				break outer
+			}
 		case StateDone:
 			break outer
+		default:
+			panic("somehow I fuckefd up")
 		}
+		
 	}
 	return read, nil
 
@@ -88,6 +108,7 @@ func (r *Request) done() bool{
 func newRequest() *Request {
 	return &Request{
 		state: StateInit,
+		Headers: headers.NewHeaders(),
 	}
 }
 func RequestFromReader(reader io.Reader) (*Request, error) {
