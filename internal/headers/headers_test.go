@@ -1,12 +1,12 @@
 package headers
 
 import (
-
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
 func TestHeaderParse(t *testing.T) {
 	// Test: Valid single header
 	headers := NewHeaders()
@@ -27,4 +27,21 @@ func TestHeaderParse(t *testing.T) {
 	require.Error(t, err)
 	assert.Equal(t, 0, n)
 	assert.False(t, done)
+	headers = NewHeaders()
+	data = []byte(
+		"Accept: text/html\r\n" +
+			"Accept: application/json\r\n" +
+			"\r\n",
+	)
+
+	n, done, err = headers.Parse(data)
+
+	require.NoError(t, err)
+	require.NotNil(t, headers)
+
+	// Expect values to be combined
+	assert.Equal(t, "text/html, application/json", headers.GET("ACCEPT"))
+
+	assert.True(t, done)
+	assert.Equal(t, len(data), n)
 }

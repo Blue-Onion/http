@@ -53,7 +53,12 @@ func (h *Headers) GET(name string) string {
 	return h.headers[strings.ToLower(name)]
 }
 func (h *Headers) SET(name, value string) {
-	h.headers[strings.ToLower(name)] = value
+	name=strings.ToLower(name)
+	newValue:=value
+	if h.headers[name]!=""&&h.headers[name]!=value{
+		newValue=h.headers[name] +", "+value
+	}
+	h.headers[name] = newValue
 }
 func (h *Headers) Parse(data []byte) (int, bool, error) {
 	read := 0
