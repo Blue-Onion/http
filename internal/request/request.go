@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"http/internal/headers"
 	"io"
+	"strconv"
 )
 
 type RequestLine struct {
@@ -14,16 +15,18 @@ type RequestLine struct {
 }
 
 const (
-	StateInit  = "init"
-	StateDone  = "done"
-	StateError = "error"
+	StateInit        = "init"
+	StateDone        = "done"
+	StateError       = "error"
+	StateBody        = "body"
 	StateParseHeader = "headers"
 )
 
 type Request struct {
 	RequestLine RequestLine
-	Headers *headers.Headers
+	Headers     *headers.Headers
 	state       string
+	Body        string
 }
 
 var ErrorMalfomredRequest = fmt.Errorf("Bad request")
@@ -46,8 +49,6 @@ func parseReqLine(s []byte) (*RequestLine, int, error) {
 
 	httpParts := bytes.Split(parts[2], []byte("/"))
 
-
-
 	if len(httpParts) != 2 || string(httpParts[0]) != "HTTP" || string(httpParts[1]) != "1.1" {
 		return nil, 0, ErrorHttpVersion
 	}
@@ -58,11 +59,30 @@ func parseReqLine(s []byte) (*RequestLine, int, error) {
 	}
 	return rl, read, nil
 }
+func (r *Request) isDone() bool{
+	length,_ := getLen(r, "content-length", 0)
+	return length==0
+}
+func getLen(r *Request, name string, dVal int) (int, error) {
+	val, ok := r.Headers.GET(name)
+	if !ok {
+		return dVal, nil
+	}
+	str, err := strconv.Atoi(val)
+	if err != nil {
+		return 0, err
+	}
+	return str, nil
+
+}
 func (r *Request) parse(data []byte) (int, error) {
 	read := 0
 outer:
 	for {
-		curr_data:=data[read:]
+		curr_data := data[read:]
+		if len(curr_data)==0{
+			break outer
+		}
 		switch r.state {
 		case StateError:
 			return 0, ErrorStateInit
@@ -80,53 +100,77 @@ outer:
 			r.state = StateParseHeader
 
 		case StateParseHeader:
-			n,done,err:=r.Headers.Parse(curr_data)
+
+			n, done, err := r.Headers.Parse(curr_data)
 			if err != nil {
 				return 0, err
 			}
-			if n==0{
+			if n == 0 {
 				break outer
 			}
-			read+=n
-			if done{
-				r.state=StateDone
+			read += n
+			if done {
+				if r.isDone(){
+					r.state = StateDone
+				}else{
+					r.state=StateBody
+				}
+			}
+		case StateBody:
+			length, err := getLen(r, "content-length", 0)
+			if err != nil {
+				return 0, err
+			}
+
+			if length == 0 {
+				r.state = StateDone
 				break outer
+			}
+			rem := min(length-len(r.Body), len(curr_data))
+			fmt.Println(string(curr_data[:rem]))
+			r.Body += string(curr_data[:rem])
+			fmt.Println(r.Body)
+			read += rem
+			if len(r.Body) == length {
+				r.state = StateDone
 			}
 		case StateDone:
 			break outer
 		default:
 			panic("somehow I fuckefd up")
 		}
-		
+
 	}
 	return read, nil
 
 }
-func (r *Request) done() bool{
-	return r.state==StateDone||r.state==StateError
+func (r *Request) done() bool {
+	return r.state == StateDone || r.state == StateError
 }
 func newRequest() *Request {
 	return &Request{
-		state: StateInit,
+		state:   StateInit,
 		Headers: headers.NewHeaders(),
+		Body:    "",
 	}
 }
 func RequestFromReader(reader io.Reader) (*Request, error) {
 	req := newRequest()
-	buf:=make([]byte, 1024)
-	bufLn:=0
-	for !req.done(){
-		n,err:=reader.Read(buf[bufLn:])
-		if err!=nil{
-			return nil,err
+	buf := make([]byte, 1024)
+	bufLn := 0
+	for !req.done() {
+
+		n, err := reader.Read(buf[bufLn:])
+		if err != nil {
+			return nil, err
 		}
-		bufLn+=n
-		read,err:=req.parse(buf[:bufLn])
-		if err!=nil{
-			return nil ,err
+		bufLn += n
+		read, err := req.parse(buf[:bufLn])
+		if err != nil {
+			return nil, err
 		}
-		copy(buf,buf[read:bufLn])
-		bufLn-=read
+		copy(buf, buf[read:bufLn])
+		bufLn -= read
 	}
 	return req, nil
 }

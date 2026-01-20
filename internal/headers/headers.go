@@ -53,8 +53,12 @@ func parse(data []byte) (string, string, error) {
 
 	return string(name), string(value), nil
 }
-func (h *Headers) GET(name string) string {
-	return h.headers[strings.ToLower(name)]
+func (h *Headers) GET(name string) (string, bool) {
+	if h == nil || h.headers == nil {
+		return "", false
+	}
+	val, ok := h.headers[strings.ToLower(name)]
+	return val, ok
 }
 func (h *Headers) SET(name, value string) {
 
