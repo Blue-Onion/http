@@ -14,7 +14,8 @@ func TestHeaderParse(t *testing.T) {
 	n, done, err := headers.Parse(data)
 	require.NoError(t, err)
 	require.NotNil(t, headers)
-	assert.Equal(t, "localhost:42067, localhost:42067", headers.GET("HOST"))
+	r,_:= headers.GET("HOST")
+	assert.Equal(t, "localhost:42067, localhost:42067",r)
 
 	assert.Equal(t, 48, n)
 	assert.True(t, done)
@@ -40,7 +41,8 @@ func TestHeaderParse(t *testing.T) {
 	require.NotNil(t, headers)
 
 	// Expect values to be combined
-	assert.Equal(t, "text/html, application/json", headers.GET("ACCEPT"))
+	r2,_:=headers.GET("ACCEPT")
+	assert.Equal(t, "text/html, application/json", r2)
 
 	assert.True(t, done)
 	assert.Equal(t, len(data), n)

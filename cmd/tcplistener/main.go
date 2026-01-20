@@ -33,5 +33,8 @@ func main(){
 		r.Headers.ForEach(func(n, v string) {
 			fmt.Println("-",n,":",v)
 		})
+		fmt.Println("Body:")
+		fmt.Println(r.Body)
+
 	}
 }
