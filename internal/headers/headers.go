@@ -17,6 +17,11 @@ func NewHeaders() *Headers {
 		headers: map[string]string{},
 	}
 }
+func (h *Headers) ForEach(cb func(n,v string)){
+	for i,v:=range h.headers{
+		cb(i,v)
+	}
+}
 func isToken(str []byte) bool {
 	for _, ch := range str {
 		found := false

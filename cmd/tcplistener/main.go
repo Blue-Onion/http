@@ -29,5 +29,9 @@ func main(){
 		fmt.Println("- Method: ", r.RequestLine.Method)
 		fmt.Println("- Target: ", r.RequestLine.RequestTarget)
 		fmt.Println("- Version: ", r.RequestLine.HttpVersion)
+		fmt.Println("Headers:")
+		r.Headers.ForEach(func(n, v string) {
+			fmt.Println("-",n,":",v)
+		})
 	}
 }
