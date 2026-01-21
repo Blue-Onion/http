@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"http/internal/response"
 	"io"
 	"net"
 )
@@ -14,9 +15,10 @@ func createServer() *Server {
 	return &Server{Closed: false}
 }
 func runConnection(s *Server, conn io.ReadWriteCloser) {
-	out := []byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 13\r\n\r\nHello World!")
-	conn.Write(out)
-	conn.Close()
+	defer conn.Close()
+	header:=response.GetDefaultHeaders(0)
+	response.WriteStatusLine(conn,response.StatusOk)
+	response.WriteHeaders(conn,header)
 
 }
 func runSever(s *Server, listener net.Listener) error {

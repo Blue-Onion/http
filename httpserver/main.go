@@ -1,7 +1,9 @@
 package main
 
 import (
+
 	"http/internal/server"
+
 	"log"
 	"os"
 	"os/signal"
@@ -10,6 +12,7 @@ import (
 
 
 const port = 42069
+
 
 func main() {
 	server, err := server.Serve(port)
