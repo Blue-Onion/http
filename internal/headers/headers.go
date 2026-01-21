@@ -72,6 +72,12 @@ func (h *Headers) SET(name, value string) {
 		h.headers[name] = newValue
 	}
 }
+func (h *Headers) Replace(name, value string) {
+
+
+	name = strings.ToLower(name)
+	h.headers[name]=value
+}
 func (h *Headers) Parse(data []byte) (int, bool, error) {
 	read := 0
 	done := false

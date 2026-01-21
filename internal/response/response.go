@@ -3,6 +3,7 @@ package response
 import (
 	"fmt"
 	"http/internal/headers"
+
 	"io"
 	"strconv"
 )
@@ -15,6 +16,7 @@ const (
 	StatusNotFound            StatusCode = 404
 	StatusInternalServerError StatusCode = 500
 )
+
 
 func WriteStatusLine(w io.Writer, status StatusCode) error {
 	statusLine := []byte{}
