@@ -9,7 +9,9 @@ import (
 )
 
 type StatusCode int
-
+type Writer struct{
+	Writer io.Writer
+}
 const (
 	StatusOk                  StatusCode = 200
 	StatusBadRequest          StatusCode = 400
@@ -17,8 +19,20 @@ const (
 	StatusInternalServerError StatusCode = 500
 )
 
+func NewWriter(writer io.Writer) *Writer{
+	return &Writer{Writer: writer}
+}
 
-func WriteStatusLine(w io.Writer, status StatusCode) error {
+func GetDefaultHeaders(contentLen int) *headers.Headers {
+	h := headers.NewHeaders()
+	
+	h.SET("content-length", strconv.Itoa(contentLen))
+	h.SET("connection", "close")
+	h.SET("content-type","text-plain")
+	return h
+}
+
+func (w *Writer) WriteStatusLine(status StatusCode) error{
 	statusLine := []byte{}
 	switch status {
 	case StatusOk:
@@ -32,23 +46,22 @@ func WriteStatusLine(w io.Writer, status StatusCode) error {
 	default:
 		return fmt.Errorf("Unrecoginzed Error Code\r\n")
 	}
-	_, err := w.Write(statusLine)
+	_, err := w.Writer.Write(statusLine)
 	return err
 }
-func GetDefaultHeaders(contentLen int) *headers.Headers {
-	h := headers.NewHeaders()
-	
-	h.SET("content-length", strconv.Itoa(contentLen))
-	h.SET("connection", "close")
-	h.SET("content-type","text-plain")
-	return h
-}
-func WriteHeaders(w io.Writer, h *headers.Headers) error{
+func (w *Writer) WriteHeaders(h headers.Headers) error{
 	b:=[]byte{}
 	h.ForEach(func(n, v string) {
 		b=fmt.Appendf(b,"%s:%s \r\n",n,v)
 	})
 	b=fmt.Appendf(b,"\r\n")
-	_,err:=w.Write(b)
+	_,err:=w.Writer.Write(b)
 	return err
+}
+func (w *Writer) WriteBody(p []byte) (int, error){
+	write,err:=w.Writer.Write(p)
+	if err != nil {
+		return 0, err
+	}
+	return write,nil
 }
