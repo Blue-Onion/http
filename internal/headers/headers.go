@@ -17,9 +17,9 @@ func NewHeaders() *Headers {
 		headers: map[string]string{},
 	}
 }
-func (h *Headers) ForEach(cb func(n,v string)){
-	for i,v:=range h.headers{
-		cb(i,v)
+func (h *Headers) ForEach(cb func(n, v string)) {
+	for i, v := range h.headers {
+		cb(i, v)
 	}
 }
 func isToken(str []byte) bool {
@@ -62,21 +62,23 @@ func (h *Headers) GET(name string) (string, bool) {
 }
 func (h *Headers) SET(name, value string) {
 
-
 	name = strings.ToLower(name)
 	newValue := value
 	val, ok := h.headers[name]
 	if ok {
-		h.headers[name]=val+", "+value
+		h.headers[name] = val + ", " + value
 	} else {
 		h.headers[name] = newValue
 	}
 }
 func (h *Headers) Replace(name, value string) {
 
-
 	name = strings.ToLower(name)
-	h.headers[name]=value
+	h.headers[name] = value
+}
+func (h *Headers) Delete(name string) {
+	name = strings.ToLower(name)
+	delete(h.headers, name)
 }
 func (h *Headers) Parse(data []byte) (int, bool, error) {
 	read := 0

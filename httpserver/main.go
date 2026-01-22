@@ -1,13 +1,16 @@
 package main
 
 import (
+	"fmt"
 	"http/internal/request"
 	"http/internal/response"
 	"http/internal/server"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 )
 
@@ -53,20 +56,50 @@ func request200() []byte {
 func main() {
 	server, err := server.Serve(port, func(w *response.Writer, req *request.Request) *server.HandlerError {
 		h := response.GetDefaultHeaders(0)
-		body:=request200()
-		status:=response.StatusOk
-		switch req.RequestLine.RequestTarget{
-		case "/urBad":
-			status=response.StatusBadRequest
-			body=request500()
-		case  "/urRawat":
-			status=response.StatusBadRequest
-			body=request500()
+		body := request200()
+		status := response.StatusOk
+		if req.RequestLine.RequestTarget == "/urBad" {
+			status = response.StatusBadRequest
+			body = request500()
+		} else if req.RequestLine.RequestTarget == "/urRawat" {
+			status = response.StatusInternalServerError
+			body = request400()
+		} else if strings.HasPrefix(req.RequestLine.RequestTarget, "/httpbin/stream") {
+			target := req.RequestLine.RequestTarget
+			prefix := "/httpbin"
+
+			res, err := http.Get("https://httpbin.org" + target[len(prefix):])
+			if err != nil {
+				fmt.Println(err)
+				status = response.StatusInternalServerError
+				body = request400()
+			} else {
+				w.WriteStatusLine(response.StatusOk)
+				h.Delete("content-length")
+				h.SET("transfer-encoding", "chunked")
+				h.Replace("content-type", "text/plain")
+				w.WriteHeaders(*h)
+				for {
+					data := make([]byte, 32)
+					n, err := res.Body.Read(data)
+					if err != nil {
+						break
+					}
+					//write hex
+					w.WriteBody([]byte(fmt.Sprintf("%x\r\n", n)))
+					//write binary
+					w.WriteBody(data[:n])
+					w.WriteBody([]byte("\r\n"))
+				}
+				w.WriteBody([]byte("0\r\n\r\n"))
+				return nil
+			}
+			defer res.Body.Close()
+
 		}
-	
 		w.WriteStatusLine(status)
-		h.Replace("content-length",strconv.Itoa(len(body)))
-		h.Replace("content-type","text/html")
+		h.Replace("content-type", "text/html")
+		h.Replace("content-length", strconv.Itoa(len(body)))
 		w.WriteHeaders(*h)
 		w.WriteBody(body)
 		return nil
