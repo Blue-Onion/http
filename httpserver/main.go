@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/sha256"
 	"fmt"
+	"http/internal/headers"
 	"http/internal/request"
 	"http/internal/response"
 	"http/internal/server"
@@ -14,8 +16,15 @@ import (
 	"syscall"
 )
 
-const port = 42069
+const port = 42067
 
+func toStr(s []byte) string {
+	out := ""
+	for _, b := range s {
+		out += fmt.Sprintf("%0.2x", b)
+	}
+	return out
+}
 func request400() []byte {
 
 	return []byte(`<html>
@@ -64,44 +73,68 @@ func main() {
 		} else if req.RequestLine.RequestTarget == "/urRawat" {
 			status = response.StatusInternalServerError
 			body = request400()
+		} else if req.RequestLine.RequestTarget == "/video" {
+			f, err := os.ReadFile("assets/vim.mp4")
+			if err != nil {
+				fmt.Println(err)
+				status = response.StatusInternalServerError
+				body = request500()
+			} else {
+
+				h.Replace("content-type", "video.mp4")
+				h.Replace("content-length", fmt.Sprintf("%d", len(f)))
+				w.WriteStatusLine(response.StatusOk)
+				w.WriteHeaders(*h)
+				w.WriteBody(f)
+				return nil
+			}
 		} else if strings.HasPrefix(req.RequestLine.RequestTarget, "/httpbin/stream") {
 			target := req.RequestLine.RequestTarget
 			prefix := "/httpbin"
-
 			res, err := http.Get("https://httpbin.org" + target[len(prefix):])
 			if err != nil {
-				fmt.Println(err)
+
 				status = response.StatusInternalServerError
 				body = request400()
 			} else {
 				w.WriteStatusLine(response.StatusOk)
 				h.Delete("content-length")
 				h.SET("transfer-encoding", "chunked")
+
 				h.Replace("content-type", "text/plain")
 				w.WriteHeaders(*h)
+				fullBody := []byte{}
 				for {
 					data := make([]byte, 32)
 					n, err := res.Body.Read(data)
 					if err != nil {
 						break
 					}
+					fullBody = append(fullBody, data[:n]...)
 					//write hex
 					w.WriteBody([]byte(fmt.Sprintf("%x\r\n", n)))
 					//write binary
 					w.WriteBody(data[:n])
 					w.WriteBody([]byte("\r\n"))
 				}
-				w.WriteBody([]byte("0\r\n\r\n"))
+				w.WriteBody([]byte("0\r\n"))
+				trailer := headers.NewHeaders()
+				out := sha256.Sum256(fullBody)
+				trailer.SET("X-Content-SHA256", toStr(out[:]))
+				trailer.SET("X-Content-Length", fmt.Sprintf("%d", len(fullBody)))
+				w.WriteHeaders(*trailer)
+
 				return nil
 			}
-			defer res.Body.Close()
 
+		} else {
+
+			w.WriteStatusLine(status)
+			h.Replace("content-type", "text/html")
+			h.Replace("content-length", strconv.Itoa(len(body)))
+			w.WriteHeaders(*h)
+			w.WriteBody(body)
 		}
-		w.WriteStatusLine(status)
-		h.Replace("content-type", "text/html")
-		h.Replace("content-length", strconv.Itoa(len(body)))
-		w.WriteHeaders(*h)
-		w.WriteBody(body)
 		return nil
 	})
 	if err != nil {
