@@ -36,13 +36,13 @@ func (w *Writer) WriteStatusLine(status StatusCode) error{
 	statusLine := []byte{}
 	switch status {
 	case StatusOk:
-		statusLine = ([]byte("Vinayak/1.1 200 OK\r\n"))
+		statusLine = ([]byte("HTTP/1.1 200 OK\r\n"))
 	case StatusInternalServerError:
-		statusLine = ([]byte("Vinayak/1.1 500 Internal Server Error\r\n"))
+		statusLine = ([]byte("HTTP/1.1 500 Internal Server Error\r\n"))
 	case StatusNotFound:
-		statusLine = ([]byte("Vinayak/1.1 404 NotFound\r\n"))
+		statusLine = ([]byte("HTTP/1.1 404 NotFound\r\n"))
 	case StatusBadRequest:
-		statusLine = ([]byte("Vinayak/1.1 400 BadRequest\r\n"))
+		statusLine = ([]byte("HTTP/1.1 400 BadRequest\r\n"))
 	default:
 		return fmt.Errorf("Unrecoginzed Error Code\r\n")
 	}

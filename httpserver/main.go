@@ -86,6 +86,7 @@ func main() {
 
 			} else {
 				w.WriteStatusLine(response.StatusOk)
+				h.Delete("content-length")
 				h.SET("transfer-encoding", "chunked")
 				h.Replace("content-type", "Text/plain")
 				w.WriteHeaders(*h)
